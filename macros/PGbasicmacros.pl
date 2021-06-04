@@ -2112,7 +2112,7 @@ sub general_math_ev3 {
 
 	my $out;
 	if($displayMode eq "HTML_MathJax") {
-		$out = '<span>'.$in_delim.'</span>';
+		$out = '<script type="math/tex' . ($mode eq 'display' ? '; mode=display' : '') . '">' . $in . '</script>';
 	} elsif ($displayMode eq "HTML_dpng" ) {
 		# for jj's version of ImageGenerator
 		#$out = $envir->{'imagegen'}->add($in_delim);
@@ -2905,21 +2905,26 @@ sub row {
 	$out;
 }
 
-=head2 Macros for displaying static images
+=head2 Macros for displaying images
 
-    Usage:
-    $string = image($image, width => 100, height => 100, tex_size => 800)
-    $string = image($image, width => 100, height => 100, extra_html_tags => 'align="middle"', tex_size => 800)
-    $string = image([$image1, $image2], width => 100, height => 100, tex_size => 800)
-    $string = caption($string);
-    $string = imageRow([$image1, $image2 ], [$caption1, $caption2]);
-             # produces a complete table with rows of pictures.
+Usage:
+
+    image($image, width => 100, height => 100, tex_size => 800, alt => 'alt text', extra_html_tags => 'style="border:solid black 1pt"');
+
+where C<$image> can be a local file path, URL, WWPlot object, or TikZImage object,
+C<width> and C<height> are pixel counts for HTML display, while C<tex_size> is
+per 1000 applied to linewidth (for example 800 leads to 0.8\linewidth)
+
+    image([$image1,$image2], width => 100, height => 100, tex_size => 800, alt => ['alt text 1','alt text 2'], extra_html_tags => 'style="border:solid black 1pt"');
+    image([$image1,$image2], width => 100, height => 100, tex_size => 800, alt => 'common alt text', extra_html_tags => 'style="border:solid black 1pt"');
+
+this produces an array in array context and joins the elements with C<' '> in scalar context
 
 =cut
 
 #   More advanced macros
 sub image {
-	my $image_ref  = shift;
+	my $image_ref = shift;
 	my @opt = @_;
 	unless (scalar(@opt) % 2 == 0 ) {
 		warn "ERROR in image macro.  A list of macros must be inclosed in square brackets.";
@@ -2929,6 +2934,8 @@ sub image {
 		width    => 100,
 		height   => '',
 		tex_size => 800,
+		# default value for alt is undef, since an empty string is the explicit indicator of a decorative image
+		alt => undef,
 		extra_html_tags => '',
 	);
 	# handle options
@@ -2944,8 +2951,10 @@ sub image {
 	my $width       = $out_options{width};
 	my $height      = $out_options{height};
 	my $tex_size    = $out_options{tex_size};
+	my $alt         = $out_options{alt};
 	my $width_ratio = $tex_size*(.001);
 	my @image_list  = ();
+	my @alt_list  = ();
 
 	# if height was explicitly given, create string for height attribute to be used in HTML, LaTeX2HTML
 	# otherwise omit a height attribute and allow the browser to use aspect ratio preservation
@@ -2957,10 +2966,18 @@ sub image {
 	} else {
 		push(@image_list, $image_ref);
 	}
+	if (ref($alt) =~ /ARRAY/ ) {
+		@alt_list = @{$alt};
+	} else {
+		for my $i (@image_list) {push(@alt_list, $alt)};
+	}
 
 	my @output_list = ();
 	while(@image_list) {
-		my $imageURL = alias(shift @image_list)//'';
+		my $image_item = shift @image_list;
+		$image_item = insertGraph($image_item)
+			if (ref $image_item eq 'WWPlot' || ref $image_item eq 'TikZImage' || ref $image_item eq 'PGtikz');
+		my $imageURL = alias($image_item)//'';
 		$imageURL = ($envir{use_site_prefix})? $envir{use_site_prefix}.$imageURL : $imageURL;
 		my $out = "";
 
@@ -2994,16 +3011,22 @@ sub image {
 			|| $displayMode eq 'HTML_asciimath'
 			|| $displayMode eq 'HTML_LaTeXMathML'
 			|| $displayMode eq 'HTML_img') {
-			$out = qq!<IMG SRC="$imageURL" class="image-view-elt" tabindex="0" role="button" WIDTH="$width" $height_attrib $out_options{extra_html_tags}>!
+			my $altattrib = '';
+			if (defined $alt_list[0]) {$altattrib = 'alt="' . encode_pg_and_html(shift @alt_list) . '"'};
+			$out = qq!<IMG SRC="$imageURL" class="image-view-elt" tabindex="0" role="button" WIDTH="$width" $height_attrib $out_options{extra_html_tags} $altattrib>!
 		} elsif ($displayMode eq 'PTX') {
 			my $ptxwidth = 100*$width/600;
-			$out = qq!<image width="$ptxwidth%" source="$imageURL" />!
+			if (defined $alt) {
+				$out = qq!<image width="$ptxwidth%" source="$imageURL"><description>$alt</description></image>!
+			} else {
+				$out = qq!<image width="$ptxwidth%" source="$imageURL" />!
+			}
 		} else {
 			$out = "Error: PGbasicmacros: image: Unknown displayMode: $displayMode.\n";
 		}
 		push(@output_list, $out);
 	}
-	return wantarray ? @output_list : $output_list[0];
+	return wantarray ? @output_list : join(' ',@output_list);
 }
 
 #This is bare bones code for embedding svg
