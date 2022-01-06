@@ -65,7 +65,7 @@ sub new {
 		$self->{pg_dir} = $ENV{PG_ROOT};
 
 		my $defaults_file = $self->{pg_dir} . "/conf/pg_defaults.yml";
-		die "Cannot read the configuration file found at $defaults_file" unless -r $defaults_file;
+		$defaults_file = $self->{pg_dir} . "/conf/pg_defaults.dist.yml" unless -r $defaults_file;
 
 		my $options = LoadFile($defaults_file);
 		$self->{webworkDirs}      = $options->{webworkDirs};
