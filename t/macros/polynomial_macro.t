@@ -129,10 +129,8 @@ my ($quot8,$rem8) = LongDiv(\@poly8,$poly8a);
 is_deeply($poly8b, $quot8, "LongDiv: use Long Division to find the quotient.");
 is_deeply($rem8,$poly8c,"LongDiv: use Long Division to find the remainder.");
 
-# The following is needed for the rest of the tests.
-sub sgn {
-	return shift >= 0 ? 1 : -1;
-}
+# The following is needed for the rest of the tests via the sgn subroutine.
+loadMacros("PGcommonFunctions.pl");
 
 my @poly9 = (1,2,-5,1);
 is(2,UpBound(\@poly9),"UpBound: find the upper bound of a polynomial");
