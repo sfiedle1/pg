@@ -357,7 +357,7 @@ sub cmp_postprocess {
     $c =~ s/[-+.]|E.*//g;
     $s =~ s/[-+.]|E.*//g;
     if ($c ne $s) {
-      $ans->{ans_message} = 'Wrong number of significant figures' unless $ans->{isPreview};
+      $ans->{ans_message} = 'Incorrect number of significant figures' unless $ans->{isPreview};
       $ans->score(.5);  # half credit for correct answer with wrong digits.
     }
   }
